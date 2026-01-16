@@ -1,0 +1,61 @@
+name: Deploy Vite App to GitHub Pages
+
+on:
+  # 监听 main 分支的 push 事件
+  push:
+    branches: ["main"]
+  # 允许在 Actions 标签页手动触发
+  workflow_dispatch:
+
+# 设置 GITHUB_TOKEN 的权限，允许写入 Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 并发控制：如果新的 push 到来，取消正在进行的构建
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code (检出代码)
+        uses: actions/checkout@v4
+
+      - name: Install pnpm (安装 pnpm)
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js (设置 Node 环境)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies (安装依赖)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project (构建项目)
+        run: pnpm build
+        # 注意：Vite 构建会生成 dist 目录
+        # 这里可能需要根据项目配置调整 base 路径，后续详述
+
+      - name: Upload pages artifact (上传构建产物)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path:./dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages (部署到 Pages)
+        id: deployment
+        uses: actions/deploy-pages@v4
